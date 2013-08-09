@@ -384,7 +384,7 @@ deps_config := \
 	drivers/net/wireless/ath/ath9k/Kconfig \
 	drivers/net/wireless/ath/ath5k/Kconfig \
 	drivers/net/wireless/ath/Kconfig \
-	drivers/net/wireless/rtl818x/Kconfig \
+	drivers/net/wireless/rtl8192cu/Kconfig \
 	drivers/net/wireless/Kconfig \
 	drivers/net/tokenring/Kconfig \
 	drivers/net/benet/Kconfig \

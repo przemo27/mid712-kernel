@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.7
- * Sun Sep 16 23:21:36 2012
+ * Thu Aug  8 13:25:30 2013
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_NF_CONNTRACK_H323 1
@@ -313,6 +313,7 @@
 #define CONFIG_SERIAL_CORE_CONSOLE 1
 #define CONFIG_USB_HID 1
 #define CONFIG_UBIFS_FS 1
+#define CONFIG_RTL8192CU_MODULE 1
 #define CONFIG_ANDROID 1
 #define CONFIG_MTD_UBI_BEB_RESERVE 1
 #define CONFIG_NET_SCH_INGRESS 1
