@@ -765,8 +765,10 @@ static void smdkc110_detect_lcd(void) {
         // Coby 8024
         printk("Selecting 8.0\" LCD...\n");
         utv210_fb_data.lcd = &lcd_ut08gm;
-    } else if (!strcmp(g_Model, "703") || 
-            !strcmp(g_LCD, "ut7gm")) {
+    } else if (!strcmp(g_LCD, "ut7gm")) {
+        // Herotab C8/Dropad A8/Haipad M7/iBall Slide/Coby 7024
+   // } else if (!strcmp(g_Model, "712") || 
+   //         !strcmp(g_LCD, "ut7gm")) {
         // Herotab C8/Dropad A8/Haipad M7/iBall Slide
         printk("Selecting 7.0\" LCD...\n");
         utv210_fb_data.lcd = &lcd_ut7gm;
@@ -868,7 +870,7 @@ static struct platform_pwm_backlight_data smdk_backlight_data = {
 
 static struct platform_device smdk_backlight_device = {
 	.name      = "pwm-backlight",
-	.id        = -1,
+	.id        = 0,
 	.dev        = {
 		.parent = &s3c_device_timer[0].dev,
 		.platform_data = &smdk_backlight_data,
