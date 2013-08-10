@@ -1,0 +1,34 @@
+config DWC_OTG
+        tristate "RALINK DWC_OTG support"
+        ---help---
+          This driver supports Ralink DWC_OTG 
+
+config DWC_OTG_DEBUG
+        bool "enable debug mode"
+        depends on DWC_OTG
+
+
+config DWC_OTG_HOST_ONLY
+        bool "HOST ONLY MODE"
+        depends on DWC_OTG
+
+config DWC_OTG_DEVICE_ONLY
+        bool "DEVICE ONLY MODE"
+        depends on DWC_OTG && USB_GADGET
+
+config DWC_OTG_BOTH_HOST_SLAVE
+		bool "BOTH HOST AND SLAVE"
+		depends on DWC_OTG && USB_GADGET
+
+if DWC_OTG_BOTH_HOST_SLAVE
+
+config DWC_OTG_NORMAL_PREFERENCE
+		bool "NORMAL MODE"
+
+config DWC_OTG_HOST_PREFERENCE
+        bool "HOST PREFERENCE MODE"
+
+config DWC_OTG_DEVICE_PREFERENCE
+        bool "DEVICE PREFERENCE MODE"
+								 
+endif

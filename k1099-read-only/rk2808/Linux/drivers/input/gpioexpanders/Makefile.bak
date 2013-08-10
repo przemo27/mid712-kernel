@@ -1,0 +1,6 @@
+# GPIO_EXPANDERS drivers
+
+
+obj-$(GPIO EXPANDERS) 	+= rk28_i2c_gpio_expanders.o
+
+

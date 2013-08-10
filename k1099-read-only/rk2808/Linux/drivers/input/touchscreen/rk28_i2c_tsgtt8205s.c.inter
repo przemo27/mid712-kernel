@@ -1,0 +1,361 @@
+/****************************************************************************************
+ * driver/input/touchscreen/rk28_i2c_tsgtt8205s.c
+ *Copyright 	:ROCKCHIP  Inc
+ *Author	: 	wqq
+ *Date		: 2009-07-15
+ *This driver use for rk28 chip extern touchscreen. Use i2c IF ,the chip is GTT8205s
+ ********************************************************************************************/
+#include <linux/input.h>
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
+#include <linux/kernel.h>
+#include <linux/platform_device.h>
+#include <linux/spi/spi.h>
+#include <linux/slab.h>
+#include <linux/fcntl.h>
+#include <linux/delay.h>
+#include <linux/device.h>
+#include <linux/timer.h>
+#include <linux/jiffies.h>
+#include <asm/types.h>
+#include <asm/io.h>
+#include <asm/delay.h>
+#include <asm/arch/api_intc.h>
+#include <asm/arch/typedef.h>
+#include <asm/arch/gpio.h>
+#include <asm/arch/api_intc.h>
+#include <asm/arch/hw_define.h>
+#include <asm/arch/hardware.h>
+#include <asm/arch/gpio.h>
+#include <asm/arch/iomux.h>
+#include <linux/ioport.h>
+#include <linux/input-polldev.h>
+#include <linux/i2c.h>
+#include <linux/workqueue.h>
+
+#include <asm/arch/api_i2c.h>
+
+/******************************************
+		DEBUG
+*** ***************************************/
+#define RK28_PRINT
+#include <asm/arch/rk28_debug.h>
+
+/*calibration parameter*/
+#define GTT8205_TOUCH_AD_LEFT            125
+#define GTT8205_TOUCH_AD_RIGHT         3968
+#define GTT8205_TOUCH_AD_TOP             3934
+#define GTT8205_TOUCH_AD_BOTTOM      20
+#define LCD_MAX_LENGTH                          800
+#define LCD_MAX_WIDTH                           480
+#define AD_TO_X(adx)    (LCD_MAX_LENGTH * (adx-GTT8205_TOUCH_AD_LEFT )/( GTT8205_TOUCH_AD_RIGHT-GTT8205_TOUCH_AD_LEFT ))
+#define AD_TO_Y(ady)    (LCD_MAX_WIDTH * (ady - GTT8205_TOUCH_AD_BOTTOM)/(GTT8205_TOUCH_AD_TOP-GTT8205_TOUCH_AD_BOTTOM ))
+
+/*touchscreen config parameter*/
+#define GTT8205_IRQ             7
+#define GTT8205_NAME    "GTT8205 touchscreen"
+
+#define TS_POLL_DELAY   (15*1000*1000)  /* ns delay before the first sample */
+#define TS_POLL_PERIOD  (100*1000*1000)  /* ns delay between samples */
+#define GTT8250_I2C_ADDR   0x15
+
+/*tochscreen private data*/
+static u8 i2c_buf[10];
+
+static int rk28_ts_gtt8205_probe(struct i2c_adapter *bus, int address, int kind);
+
+
+struct GTT8205_TS_EVENT{	
+	struct i2c_client *client;
+	struct input_dev *input;
+	struct delayed_work work;
+	spinlock_t	lock;
+	char	phys[32];
+	int 		irq;
+	uint16	x;
+	uint16	y;
+	uint16	   touch_x;
+	uint16	touch_y;
+	bool		pendown;
+	bool	 status;
+	struct hrtimer	timer;
+};
+/*read the gtt8205 register ,used i2c bus*/
+static int gtt8205_read_regs(struct i2c_client *client, u8 reg, u8 buf[], unsigned len)
+{
+	int ret;
+	struct i2c_msg msgs[1] = {
+		{ client->addr, 1, len, buf },
+	};
+	buf[0] = reg;
+	//printk("%s the slave i2c device mode == %d\n",__FUNCTION__,client->adapter->mode);
+	ret = i2c_transfer(client->adapter, msgs, 1);
+	
+	if (ret > 0)
+		ret = 0;	
+	return ret;
+}
+
+
+/* set the gtt8205 registe,used i2c bus*/
+static int gtt8205_set_regs(struct i2c_client *client, u8 reg, u8 const buf[], unsigned short len)
+{
+	int ret;
+	struct i2c_msg msgs[1] = {
+		{ client->addr, 0, len + 1, i2c_buf }
+	};
+
+	i2c_buf[0] = reg;
+	memcpy(&i2c_buf[1], &buf[0], len);
+	
+	ret = i2c_transfer(client->adapter, msgs, 1);
+	if (ret > 0)
+		ret = 0;
+	
+	return ret;
+}
+
+static void  gtt8205_read_values(struct GTT8205_TS_EVENT *ts_dev )
+{
+	int sr;
+	u8  buf[12];
+	unsigned short  xpos,ypos;
+	struct input_dev *input;
+	xpos = ypos = 0;
+	sr=gtt8205_read_regs(ts_dev->client, 0, buf,12);
+	if(sr<0)
+	{		
+		rk28printk("\n----I2C read gtt8205 err");
+		return;
+	}	
+	xpos =( ((((unsigned short)buf[1] )<< 8) )| buf[0] )& 0xfff;
+	ypos = (((((unsigned short)buf[3] )<< 8) )| buf[2] )& 0xfff;
+	rk28printk("gtt8502 read position buff0==%x buff1 ==  %x buff2 ==%x buff3 == %x  buff4==%x\n",buf[0],buf[1],buf[2],buf[3],buf[4]);
+	rk28printk("gtt8502 read position x==%d y=  %d\n",xpos,ypos);
+
+	if((xpos == 2048)&&(ypos == 2048))	/*ignored pressure*/
+	{
+		ts_dev->pendown = 1;
+		rk28printk("ignored pressure\n");
+		hrtimer_start(&ts_dev->timer,ktime_set(0,TS_POLL_PERIOD),HRTIMER_MODE_REL);
+		return ;
+	}
+	else		/*valid event*/
+	{
+		input = ts_dev->input;
+		if(!ts_dev->pendown)
+		{
+			printk("The touchscreen down!!\n");
+			input_report_key(input,BTN_TOUCH,1);
+			ts_dev->pendown = 1;
+		}
+		//printk("************>%s.(adsample_value)...x=%d...y=%d\n",__FUNCTION__,xpos,ypos);
+		ypos =   LCD_MAX_WIDTH - AD_TO_Y(ypos);
+		xpos =   AD_TO_X(xpos);		
+		//printk("************>%s.(touch_point)...x=%d...y=%d\n",__FUNCTION__,xpos,ypos);		
+		input_report_abs(input,ABS_X,xpos);
+		input_report_abs(input,ABS_Y,ypos);
+		input_sync(input);
+	}
+	hrtimer_start(&ts_dev->timer,ktime_set(0,TS_POLL_PERIOD),HRTIMER_MODE_REL);
+
+	
+
+}
+
+static enum hrtimer_restart gtt8205_dotimer(struct hrtimer *handle)
+{
+
+	struct GTT8205_TS_EVENT *ts_dev = container_of(handle, struct GTT8205_TS_EVENT, timer);
+	struct input_dev *input;
+	int PE7status;
+//	rk28printk("************>%s.....%s.....\n",__FILE__,__FUNCTION__);
+	spin_lock_irq(&ts_dev->lock);
+	PE7status =  GPIOGetPinLevel(GPIOPortE_Pin7);
+
+
+	if(unlikely(ts_dev->pendown && PE7status))
+	{
+		input = ts_dev->input;
+		rk28printk("The touchscreen up!!\n");
+		input_report_key(input,BTN_TOUCH,0);
+		input_sync(input);
+		ts_dev->pendown = 0;
+		gpio_irq_enable(GPIOPortE_Pin7);
+	}
+	else{
+		/*still down ,continue with the measurement*/
+		rk28printk("pen still down!!\n");
+		gtt8205_read_values(ts_dev);
+	}
+
+	spin_unlock_irq(&ts_dev->lock);
+	return HRTIMER_NORESTART;
+
+
+
+}
+
+static irqreturn_t gtt8205_ts_isr(int irq, void *dev_id)
+{
+	struct GTT8205_TS_EVENT *ts_dev ;
+	unsigned long flags;
+	ts_dev = dev_id;
+	//rk28printk("************>%s.....%s.....%d\n",__FILE__,__FUNCTION__,__LINE__);
+	rk28printk("*******>the interrupt status==%d\n",GPIOGetPinLevel(GPIOPortE_Pin7));
+	rk28printk("------->the reset status is ==%d\n",GPIOGetPinLevel(GPIOPortF_Pin7));
+	spin_lock_irqsave(&ts_dev->lock,flags);
+	gpio_irq_disable(GPIOPortE_Pin7);
+	hrtimer_start(&ts_dev->timer,ktime_set(0,TS_POLL_DELAY),HRTIMER_MODE_REL);	
+	spin_unlock_irqrestore(&ts_dev->lock, flags);
+	return IRQ_HANDLED;
+}
+
+
+static int rk28_ts_gtt8205_detach_client(struct i2c_client *client)
+{
+	rk28printk("************>%s.....%s.....\n",__FILE__,__FUNCTION__);
+	return 0;
+}
+
+static void rk28_ts_gtt8205_shutdown(struct i2c_client *client)
+{
+	rk28printk("************>%s.....%s.....\n",__FILE__,__FUNCTION__);
+}
+
+
+static unsigned short gtt8205_normal_i2c[] = {GTT8250_I2C_ADDR>>1,I2C_CLIENT_END};
+static unsigned short gtt8205_ignore = I2C_CLIENT_END;
+
+static struct i2c_client_address_data gtt8205_addr_data={
+	.normal_i2c = gtt8205_normal_i2c,
+	.probe = &gtt8205_ignore,
+	.ignore =& gtt8205_ignore,
+};
+static int rk28_ts_gtt8205_attach_adapter(struct i2c_adapter *adap)
+{
+	return i2c_probe(adap,&gtt8205_addr_data,rk28_ts_gtt8205_probe);
+}
+
+static struct i2c_driver gtt8205_driver  = {
+	.driver = {
+		.name = "gtt8205s",
+		.owner = THIS_MODULE,
+	},
+	.id = GTT8250_I2C_ADDR,
+	.attach_adapter = &rk28_ts_gtt8205_attach_adapter,
+	.detach_client 	= &rk28_ts_gtt8205_detach_client,
+	.shutdown     	=  &rk28_ts_gtt8205_shutdown,
+};
+static struct  i2c_client gtt8205_client = {
+		.driver = &gtt8205_driver,
+		.name	= "gtt8205s",
+	};
+
+static int rk28_ts_gtt8205_probe(struct i2c_adapter *bus, int address, int kind)
+{
+
+	struct GTT8205_TS_EVENT *ts_dev;
+	struct input_dev *input;
+	unsigned int err = 0;
+	rk28printk("************>%s.....%s.....\n",__FILE__,__FUNCTION__);
+//	rk28printk("---------------probe gtt8205 adapter %p addr %x kind %d\n", bus, address, kind);
+	/*set PE7  IOMODE  use to screen intterrupt signal*/
+	rockchip_mux_api_set(GPIOE_U1IR_I2C1_NAME, IOMUXA_GPIO1_A67);
+	GPIOSetPinDirection(GPIOPortE_Pin7,GPIO_IN);
+//	GPIOPullUpDown(GPIOPortE_Pin7,GPIOPullUp);
+	rk28printk("------>the intterrup status is ==%d\n",GPIOGetPinLevel(GPIOPortE_Pin7));
+	/*set PF7  IOMODE use to screen reset signal*/
+	//rockchip_mux_api_set(GPIOE_SPI1_SEL_NAME, IOMUXA_GPIO1_A1237);
+	//GPIOSetPinDirection(GPIOPortF_Pin7,GPIO_OUT);
+	//GPIOSetPinLevel(GPIOPortF_Pin7,GPIO_HIGH);
+	rk28printk("------>the reset status is ==%d\n",GPIOGetPinLevel(GPIOPortF_Pin7));
+
+	ts_dev=kzalloc(sizeof(struct GTT8205_TS_EVENT), GFP_KERNEL);
+	if(!ts_dev)
+	{
+		rk28printk("failed to allocate memory!!\n");
+		goto nomem;
+	}
+	gtt8205_client.adapter = bus;
+	gtt8205_client.addr= GTT8250_I2C_ADDR>>1;//address;
+	gtt8205_client.mode = DIRECTMODE;
+	ts_dev->client=&gtt8205_client; 
+
+
+
+	err = i2c_attach_client(&gtt8205_client);
+	if (err < 0)
+		 return err;
+
+
+	
+	input = input_allocate_device();
+	if(!input)
+	{
+		rk28printk("rk28 ra4310_ts allocate input device failed!!!\n"); 
+		goto fail1;
+	}	
+	ts_dev->input = input;
+	/*init	timer to dispose workqueue */
+	hrtimer_init(&ts_dev->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	ts_dev->timer.function = gtt8205_dotimer;
+	ts_dev->irq = 7;
+	ts_dev->status = 0;
+	ts_dev->pendown = 0;
+	ts_dev->input->phys="gtt8205_TS/input0";
+	
+	input->evbit[0] = BIT_MASK(EV_ABS)|BIT_MASK(EV_KEY);
+	input->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
+	input_set_abs_params(input,ABS_X,0,800,0,0);
+	input_set_abs_params(input,ABS_Y,0,480,0,0);
+	input->name = "gtt8205s";	
+	err = input_register_device(input);
+	if(err)
+		goto fail2;
+	gtt8205_read_values(ts_dev);
+	printk("------>the status is ==%d\n",GPIOGetPinLevel(GPIOPortF_Pin7));
+
+	err = request_gpio_irq(GPIOPortE_Pin7,gtt8205_ts_isr,GPIOEdgelFalling,ts_dev);
+	if(err)
+	{
+		rk28printk("unable to request touchscreen IRQ\n");
+		goto fail3;
+	}	
+
+	return 0;
+fail3:
+	free_irq(7,NULL);
+fail2:
+	input_unregister_device(input);
+	input = NULL;
+	hrtimer_cancel(&ts_dev->timer);
+fail1:
+	input_free_device(input);
+nomem:
+		kfree(ts_dev);
+
+	return err;
+}
+
+static int __init rk28_ts_gtt8205_init(void)
+{
+	return i2c_add_driver(&gtt8205_driver);
+}
+
+//module_init(rk28_ts_gtt8205_init);
+late_initcall(rk28_ts_gtt8205_init);
+
+static void __exit rk28_ts_gtt8205_exit(void)
+{
+	i2c_del_driver(&gtt8205_driver);
+}
+module_exit(rk28_ts_gtt8205_exit);
+
+MODULE_DESCRIPTION ("GTT touchscreen driver");
+MODULE_AUTHOR("WQQ<wqq@rockchip.com.cn>");
+MODULE_LICENSE("GPL");
+
+
+

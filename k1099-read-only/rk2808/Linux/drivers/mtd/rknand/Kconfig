@@ -1,0 +1,34 @@
+# drivers/mtd/nand/Kconfig
+# $Id: Kconfig,v 1.35 2005/11/07 11:14:30 gleixner Exp $
+
+config MTD_RKNAND
+	tristate "RK NAND Device Support"
+	depends on MTD
+	select MTD_RK_NAND_IDS
+	help
+	  .
+
+if MTD_RKNAND
+
+config MTD_NAND_RK28XX
+	tristate "RK28 on-chip NAND Flash Controller driver with FTL"
+	depends on MTD_RKNAND
+    default y
+	help
+	  This enables the RK28xx on-chip NAND flash controller and NFTL driver.
+
+config MTD_NAND_RK28XX_DEBUG
+	tristate "RK28 Nand driver debug enables"
+	depends on MTD_RKNAND
+    default n
+	help
+	
+config MTD_NAND_RK28XX_DEBUG_VERBOSE
+	int "Debugging verbosity (0 = quiet, 3 = noisy)"
+	depends on MTD_NAND_RK28XX_DEBUG
+	default "0"
+	help
+	  Determines the verbosity level of the MTD NAND debugging messages.
+	  
+endif # MTD_RKNAND
+

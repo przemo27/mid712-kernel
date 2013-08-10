@@ -1,0 +1,6 @@
+menu "RK1000 CONTROL"
+config RK1000_CONTROL
+    tristate "ROCKCHIP RK1000 CONTROL"
+    depends on ARCH_ROCKCHIP
+	default y
+endmenu

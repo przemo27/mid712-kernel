@@ -189,6 +189,7 @@ static int mma7660_read_data(struct i2c_client *client , short *x, short *y, sho
     temp = *x;
     *x = *y;
     *y = temp;
+    *z = -*z; 
 
     return 0;
 }

@@ -1,0 +1,72 @@
+if ARCH_ROCKCHIP
+
+menu "Rockchip system-on-chip"
+
+
+choice 
+	prompt  "rockchip processor"
+
+config MACH_RK2808SDK
+	bool "Rockchip  rk2808 sdk board for develope"
+	depends on ARCH_ROCKCHIP
+	default n
+config MACH_PWS700AA
+	bool "Rockchip  rk2808 for yushe 7ch lcd PWS700AA net book"
+	depends on ARCH_ROCKCHIP
+	default n
+
+config MACH_LANMO_W7
+        bool "Rockchip  rk2808 for riguan(lanmo)  W7 MID"
+        depends on ARCH_ROCKCHIP
+        default n
+
+endchoice
+if ARCH_ROCKCHIP
+
+comment "Rockchip Board Type"
+	
+config CPU_ARM926T
+	bool "CPU_ARM926T"
+	default y
+
+config CPU_32
+	bool "CPU_32"
+	default y
+		
+config CPU_32v5
+	bool "CPU_32v5"
+	default y
+		
+config CPU_ABRT_EV5TJ
+	bool "CPU_ABRT_EV5TJ"
+	default y
+		
+config CPU_CACHE_VIVT
+	bool "CPU_CACHE_VIVT"
+	default y
+		
+config CPU_COPY_V4WB
+	bool "CPU_COPY_V4WB"
+	default y
+		
+config CPU_TLB_V4WBI
+	bool "CPU_TLB_V4WBI"
+	default y
+		
+config CPU_CP15
+	bool "CPU_CP15"
+	default y
+		
+config CPU_CP15_MMU
+	bool "CPU_CP15_MMU"
+	default y
+
+config CPU_CP15
+	bool "PROCESS_CP15"
+	default y
+
+endif
+
+endmenu
+
+endif

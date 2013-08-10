@@ -1,0 +1,11 @@
+/***********************************************
+* Copyright: rockchip Inc
+* arch/arm/configs/readme
+***********************************************/
+Kernel configuration file introduct
+
+This text introduce rockchip 2800 board .config configure process
+
+    config file			              function
+rk28_nand.config      ----------->contain (serial/timer/I2c/spi/net/ts/key)   2009-06-05
+		     

@@ -1,0 +1,7 @@
+menu "DSP"
+config ROCKCHIP_DSP
+	tristate "ROCKCHIP DSP"
+	default y
+	help
+          rk28 dsp module.
+endmenu

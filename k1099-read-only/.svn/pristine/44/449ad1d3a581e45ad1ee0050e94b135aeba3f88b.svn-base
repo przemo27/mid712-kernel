@@ -1,0 +1,15 @@
+#
+# SCU kconfig
+# drivers/scu configuration
+#
+
+#menuconfig RK28_SCU
+config RK28_SCU
+	tristate "rockchip 28 scu"
+	default y 
+	depends on (ARCH_ROCKCHIP || ARM )
+	help
+          SCU to manage arm clk, dsp clk, lcd clk and apb clk, ahb clk.
+	  user app can change system clk by sysfs interface.
+          present on many ROCKCHIP and rk28.
+

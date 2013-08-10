@@ -1,0 +1,208 @@
+#
+# RTC class/drivers configuration
+#
+
+config RTC_LIB
+	tristate
+
+menuconfig RTC_CLASS
+	tristate "Real Time Clock"
+	default n
+	depends on !S390
+	select RTC_LIB
+	help
+	  Generic RTC class support. If you say yes here, you will
+ 	  be allowed to plug one or more RTCs to your system. You will
+	  probably want to enable one or more of the interfaces below.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-core.
+
+if RTC_CLASS
+
+if GEN_RTC || RTC
+comment "Conflicting RTC option has been selected, check GEN_RTC and RTC"
+endif
+
+config RTC_HCTOSYS
+	bool "Set system time from RTC on startup and resume"
+	depends on RTC_CLASS = y
+	default y
+	help
+	  If you say yes here, the system time (wall clock) will be set using
+	  the value read from a specified RTC device. This is useful to avoid
+	  unnecessary fsck runs at boot time, and to network better.
+
+config RTC_HCTOSYS_DEVICE
+	string "RTC used to set the system time"
+	depends on RTC_HCTOSYS = y
+	default "rtc0"
+	help
+	  The RTC device that will be used to (re)initialize the system
+	  clock, usually rtc0.  Initialization is done when the system
+	  starts up, and when it resumes from a low power state.  This
+	  device should record time in UTC, since the kernel won't do
+	  timezone correction.
+
+	  The driver for this RTC device must be loaded before late_initcall
+	  functions run, so it must usually be statically linked.
+
+	  This clock should be battery-backed, so that it reads the correct
+	  time when the system boots from a power-off state.  Otherwise, your
+	  system will need an external clock source (like an NTP server).
+
+	  If the clock you specify here is not battery backed, it may still
+	  be useful to reinitialize system time when resuming from system
+	  sleep states. Do not specify an RTC here unless it stays powered
+	  during all this system's supported sleep states.
+
+config RTC_DEBUG
+	bool "RTC debug support"
+	depends on RTC_CLASS = y
+	help
+	  Say yes here to enable debugging support in the RTC framework
+	  and individual RTC drivers.
+
+comment "RTC interfaces"
+
+config RTC_INTF_SYSFS
+	boolean "/sys/class/rtc/rtcN (sysfs)"
+	depends on SYSFS
+	default RTC_CLASS
+	help
+	  Say yes here if you want to use your RTCs using sysfs interfaces,
+	  /sys/class/rtc/rtc0 through /sys/.../rtcN.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-sysfs.
+
+config RTC_INTF_PROC
+	boolean "/proc/driver/rtc (procfs for rtc0)"
+	depends on PROC_FS
+	default RTC_CLASS
+	help
+	  Say yes here if you want to use your first RTC through the proc
+	  interface, /proc/driver/rtc.  Other RTCs will not be available
+	  through that API.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-proc.
+
+config RTC_INTF_DEV
+	boolean "/dev/rtcN (character devices)"
+	default RTC_CLASS
+	help
+	  Say yes here if you want to use your RTCs using the /dev
+	  interfaces, which "udev" sets up as /dev/rtc0 through
+	  /dev/rtcN.  You may want to set up a symbolic link so one
+	  of these can be accessed as /dev/rtc, which is a name
+	  expected by "hwclock" and some other programs.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-dev.
+
+config RTC_INTF_DEV_UIE_EMUL
+	bool "RTC UIE emulation on dev interface"
+	depends on RTC_INTF_DEV
+	help
+	  Provides an emulation for RTC_UIE if the underlying rtc chip
+	  driver does not expose RTC_UIE ioctls.  Those requests generate
+	  once-per-second update interrupts, used for synchronization.
+
+config RTC_DRV_TEST
+	tristate "Test driver/device"
+	help
+	  If you say yes here you get support for the
+	  RTC test driver. It's a software RTC which can be
+	  used to test the RTC subsystem APIs. It gets
+	  the time from the system clock.
+	  You want this driver only if you are doing development
+	  on the RTC subsystem. Please read the source code
+	  for further details.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-test.
+
+comment "I2C RTC drivers"
+	depends on I2C
+
+if I2C
+
+config RTC_HYM8563
+        tristate "RK28 extern HYM8563 RTC"
+	depends on I2C_RK28
+        help
+          If you say yes here you will get support for the
+          HYM8563 I2C RTC chip.
+          This driver can also be built as a module. If so, the module
+          will be called rtc-HYM8563.
+
+config RTC_PT7C4337
+        tristate "RK28 extern PT7C4337 RTC"
+	depends on I2C_RK28
+        help
+          If you say yes here you will get support for the
+          PT7C4337 I2C RTC chip.
+          This driver can also be built as a module. If so, the module
+          will be called rtc-PT7C4337.
+          
+config RTC_DRV_TWL92330
+	boolean "TI TWL92330/Menelaus"
+	depends on MENELAUS
+	help
+	  If you say yes here you get support for the RTC on the
+	  TWL92330 "Menelaus" power management chip, used with OMAP2
+	  platforms.  The support is integrated with the rest of
+	  the Menelaus driver; it's not separate module.
+
+endif # I2C
+
+comment "SPI RTC drivers"
+
+if SPI_MASTER
+
+config RTC_DRV_R9701
+	tristate "Epson RTC-9701JE"
+	help
+	  If you say yes here you will get support for the
+	  Epson RTC-9701JE SPI RTC chip.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-r9701.
+
+endif # SPI_MASTER
+
+comment "Platform RTC drivers"
+
+# this 'CMOS' RTC driver is arch dependent because <asm-generic/rtc.h>
+# requires <asm/mc146818rtc.h> defining CMOS_READ/CMOS_WRITE, and a
+# global rtc_lock ... it's not yet just another platform_device.
+
+config RTC_DRV_CMOS
+	tristate "PC-style 'CMOS'"
+	depends on X86 || ALPHA || ARM || M32R || ATARI || PPC || MIPS
+	help
+	  Say "yes" here to get direct support for the real time clock
+	  found in every PC or ACPI-based system, and some other boards.
+	  Specifically the original MC146818, compatibles like those in
+	  PC south bridges, the DS12887 or M48T86, some multifunction
+	  or LPC bus chips, and so on.
+
+	  Your system will need to define the platform device used by
+	  this driver, otherwise it won't be accessible.  This means
+	  you can safely enable this driver if you don't know whether
+	  or not your board has this kind of hardware.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-cmos.
+
+comment "on-CPU RTC drivers"
+
+
+config RTC_DRV_GOLDFISH
+	tristate "GOLDFISH"
+	depends on RTC_CLASS
+	help
+	  RTC driver for Goldfish Virtual Platform
+
+endif # RTC_CLASS

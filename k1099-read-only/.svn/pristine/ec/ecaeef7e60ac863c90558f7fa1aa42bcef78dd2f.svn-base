@@ -1,0 +1,40 @@
+choice
+    depends on DISPLAY_SUPPORT
+	prompt  "LCD Panel Select"
+config LCD_NULL
+	bool "NULL"
+config LCD_TD043MGEA1
+	bool "RGB TD043MGEA1"
+config LCD_TJ048NC01CA
+    bool "RGB TJ048NC01CA"
+config LCD_HL070VM4AU
+    bool "RGB_HL070VM4AU"
+config LCD_KD50G2_40TM480x272
+	bool "RGB KD50G2_40TM480x272"
+config LCD_LQ048Y3DH01
+	bool "RGB LQ048Y3DH01"
+config LCD_KD50G2_40TM
+	bool "RGB KD50G2_40TM"
+config LCD_BM999INCH89
+	bool "RGB BM999_INCH89"
+config LCD_HSD070IDW1
+    bool "RGB Hannstar800x480"
+endchoice
+
+choice
+    depends on DISPLAY_SUPPORT
+	prompt  "TVOUT Chip Select"
+config TV_NULL
+	bool "NULL"
+config TV_RK1000
+	bool "TV_RK1000"
+endchoice
+
+choice
+    depends on DISPLAY_SUPPORT
+	prompt  "HDMI Chip Select"
+config HDMI_NULL
+	bool "NULL"
+config HDMI_ANX7150
+	bool "HDMI ANX7150"
+endchoice

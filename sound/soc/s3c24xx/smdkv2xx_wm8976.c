@@ -609,14 +609,14 @@ static void smdkv210_audio_clk_init(void)
 }
 
 static void ut_check_i2s_board_type(void)
-{
-/*	extern char g_selected_pcb[];
-	if(!strcmp(g_selected_pcb, "single") || !strcmp(g_selected_pcb, "cv05"))
+//{
+	//extern char g_selected_pcb[];
+	//if(!strcmp(g_selected_pcb, "single") || !strcmp(g_selected_pcb, "cv05"))
 	{
 		printk("urbetter i2s: detected single board type PCB / cv05.\n");
 		smdkv2xx_dai[0].cpu_dai = &s3c64xx_i2s_v4_dai[0];
-	}*/
-}
+	}
+//}
 
 static struct delayed_work audio_jack_watcher_work;
 
@@ -642,7 +642,7 @@ static int __init smdkv2xx_audio_init(void)
     unsigned int nGPIO;
 
 	WM8976_DEBUG(" smdkv210_audio_init start\n");
-//	 extern char g_selected_codec[];
+	 extern char g_selected_codec[];
 	#if 0 //wang
          if(!strcmp(g_selected_codec, "wm8976")){
 	     	printk("smdk2xx_wm8976 ::->smdkv2xx_audio_init ........ wm8976 ok\n");

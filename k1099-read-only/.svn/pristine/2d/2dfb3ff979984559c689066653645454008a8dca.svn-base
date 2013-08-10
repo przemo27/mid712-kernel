@@ -1,0 +1,40 @@
+config SND_ROCKCHIP_SOC
+	tristate "SoC Audio for the rockchip RK28 System-on-Chip"
+	depends on ARCH_ROCKCHIP && SND_SOC
+	help
+	  Say Y or M if you want to add support for codecs attached to
+	  the ROCKCHIP IIS interface. You will also need
+	  to select the audio interfaces to support below.
+
+config SND_ROCKCHIP_SOC_IIS
+	tristate 
+
+config SND_ROCKCHIP_SOC_WM8988
+	tristate "SoC I2S Audio support for rockchip - WM8988"
+	depends on SND_ROCKCHIP_SOC 
+	select SND_ROCKCHIP_SOC_IIS
+	select SND_SOC_WM8988
+	help
+	  Say Y if you want to add support for SoC audio on rockchip
+	  with the WM8988.
+	  
+config SND_ROCKCHIP_SOC_RK1000
+	tristate "SoC I2S Audio support for rockchip - RK1000"
+	depends on SND_ROCKCHIP_SOC 
+	select SND_ROCKCHIP_SOC_IIS
+	select SND_SOC_RK1000
+	help
+	  Say Y if you want to add support for SoC audio on rockchip
+	  with the RK1000.	 
+	   
+if SND_ROCKCHIP_SOC_WM8988 || SND_ROCKCHIP_SOC_RK1000
+choice
+  prompt "set i2s type"
+	config SND_ROCKCHIP_SOC_SLAVE
+		tristate "Run codec in slave Mode on Endrelia boards"
+
+	config  SND_ROCKCHIP_SOC_MASTER
+		tristate  "Run codec in master Mode on Endrelia boards"
+endchoice
+endif
+

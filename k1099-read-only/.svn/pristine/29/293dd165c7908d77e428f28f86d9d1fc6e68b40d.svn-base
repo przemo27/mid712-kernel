@@ -1,0 +1,21 @@
+#
+# Touchscreen driver configuration
+#
+menuconfig GPIO_EXPANDERS
+	bool "GPIO EXPANDERS"
+	help
+	  Say Y here, and a list of supported touchscreens will be displayed.
+	  This option doesn't affect the kernel.
+
+	  If unsure, say Y.
+
+if GPIO_EXPANDERS
+    
+config RK28_I2C_GPIO_EXPANDERS
+	tristate "RK28 i2c GPIO_EXPANDERS "
+	depends on I2C_RK28
+	help
+	    say Y here if you have a touchscreen interface using the i2c controller, 
+	    and your-specific setup code includes that in its table of i2c devices.	 	
+
+endif
